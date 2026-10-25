@@ -1,0 +1,28 @@
+services:
+  company-detective:
+    build:
+      context: .
+    image: company-detective:local
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 370s
+    env_file:
+      - .env
+    environment:
+      COMPANY_DETECTIVE_HOST: 0.0.0.0
+      COMPANY_DETECTIVE_DB_PATH: /data/company_detective.sqlite3
+    ports:
+      - "127.0.0.1:8765:8765"
+    volumes:
+      # Source mount enables automatic restart after code/UI edits.
+      - .:/app:ro
+      - company_detective_data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8765/api/status', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  company_detective_data:

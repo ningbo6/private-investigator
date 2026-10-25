@@ -1,0 +1,18 @@
+{
+	email {$ACME_EMAIL}
+	admin off
+}
+
+{$DOMAIN} {
+	header Strict-Transport-Security "max-age=31536000"
+	request_body {
+		max_size 8MB
+	}
+	basic_auth {
+		{$AUTH_USER} {$AUTH_PASSWORD_HASH}
+	}
+	reverse_proxy company-detective:8765 {
+		header_up X-Detective-Proxy-Token {$PROXY_TOKEN}
+		header_up -Authorization
+	}
+}

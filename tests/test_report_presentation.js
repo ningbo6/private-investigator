@@ -1,0 +1,17 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const code=fs.readFileSync('app.js','utf8');
+const elements={briefing:{innerHTML:''}};
+const ctx={URL,esc:s=>String(s??''),$:id=>elements[id]};vm.createContext(ctx);
+vm.runInContext(code.slice(code.indexOf('const FIVE_DIMENSIONS'),code.indexOf('function renderRoutes()')),ctx);
+vm.runInContext(code.slice(code.indexOf('function renderBriefing('),code.indexOf('function renderDeep(')),ctx);
+vm.runInContext(code.slice(code.indexOf('function renderPatentDetails('),code.indexOf('const alerted=')),ctx);
+const p={id:'a',url:'https://example.org/doc?q=1',title:'A',passage:'same text '.repeat(30),related:true};
+const groups=ctx.groupEvidence([{id:'r1',pages:[p,p]},{id:'r2',pages:[{...p,url:p.url+'#part'},{...p,id:'b',url:'https://another.org/doc'}]}]);
+assert.equal(groups.length,1);assert.equal(groups[0].length,2);assert.equal(groups[0][0].variants.length,1);assert.equal(groups[0][0].routes.size,2);
+assert.notEqual(ctx.sourceKey(p),ctx.sourceKey({...p,url:'https://example.org/doc?q=2'}));
+const report={evidence:[],briefing:{claims:[],headline:'Unknown',disputes:[{label:'TEST conflict',reason:'Different periods must be checked',evidence:[{quote:'A',url:p.url,evidence_id:'a'},{quote:'B',url:'https://another.org/doc',evidence_id:'b'}]}],unknowns:[],boundary:'Test fixture only'}};
+ctx.renderBriefing(report);assert.ok(elements.briefing.innerHTML.includes('class="conflict-grid"'));assert.ok(elements.briefing.innerHTML.includes('材料 2'));
+report.briefing.disputes=[];ctx.renderBriefing(report);assert.ok(!elements.briefing.innerHTML.includes('class="conflict-grid"'));
+const patents=ctx.renderPatentDetails([{task_id:'patent_application',answer:'Application unknown',score:null}]);
+assert.ok(patents.indexOf('1 · 申请人')<patents.indexOf('5 · 应用'));assert.ok(patents.includes('暂无有效评分'));assert.ok(patents.includes('尚无本项分析'));
+console.log('Grouping, URL preservation, conflict/absence, patent order and unknown tests passed');

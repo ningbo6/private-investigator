@@ -1,0 +1,16 @@
+.env
+.env.server
+.env.runtime
+deploy/backups/
+.company_detective.sqlite3
+.company_detective.sqlite3-*
+tools/ocr_image
+.backups/
+output/
+__pycache__/
+*.pyc
+.DS_Store
+SecretKey.csv
+apikey.csv
+1024 超能 Coding 周末｜选手手册 - 飞书云文档.pdf
+这周末用元宝搜索做AI侦探，冲MacBook、现金大奖！.pdf

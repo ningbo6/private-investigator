@@ -1,0 +1,56 @@
+name: company-detective-server
+services:
+  company-detective:
+    build: .
+    image: company-detective:server
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 370s
+    env_file: .env.server
+    environment:
+      COMPANY_DETECTIVE_HOST: 0.0.0.0
+      COMPANY_DETECTIVE_PUBLIC_ORIGIN: https://${DOMAIN:?Set DOMAIN in .env.server}
+      COMPANY_DETECTIVE_PROXY_TOKEN: ${PROXY_TOKEN:?Set a random PROXY_TOKEN}
+      COMPANY_DETECTIVE_DB_PATH: /data/company_detective.sqlite3
+    volumes:
+      - reports:/data
+    # No host port and no source bind mount in production.
+    read_only: true
+    tmpfs:
+      - /tmp:size=512m,mode=1777
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    pids_limit: 128
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8765/healthz', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: '3'}
+  caddy:
+    image: caddy:2.10.2-alpine
+    restart: unless-stopped
+    depends_on:
+      company-detective: {condition: service_healthy}
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:?Set certificate contact email}
+      AUTH_USER: ${AUTH_USER:?Set AUTH_USER}
+      AUTH_PASSWORD_HASH: ${AUTH_PASSWORD_HASH:?Generate a bcrypt password hash}
+      PROXY_TOKEN: ${PROXY_TOKEN:?Set PROXY_TOKEN}
+    ports: ['80:80', '443:443']
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    security_opt: [no-new-privileges:true]
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: '3'}
+volumes:
+  reports:
+  caddy_data:
+  caddy_config:
