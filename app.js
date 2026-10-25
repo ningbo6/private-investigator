@@ -383,12 +383,15 @@ function renderRadar(r) {
   const rings=[.2,.4,.6,.8,1].map(v=>`<polygon points="${poly(Array(n).fill(maxCount*v))}" class="radar-ring"/>`).join('');
   const axes=pts.map(p=>`<line x1="${c}" y1="${c}" x2="${p[0]}" y2="${p[1]}" class="radar-axis"/>`).join('');
   const labels=pts.map((p,i)=>{const a=-Math.PI/2+i*angle,x=c+(rad+25)*Math.cos(a),y=c+(rad+25)*Math.sin(a);return `<text x="${x}" y="${y}" class="radar-label" text-anchor="${Math.abs(Math.cos(a))<.2?'middle':Math.cos(a)>0?'start':'end'}" dominant-baseline="middle">${names[i]}<tspan x="${x}" dy="20">${values[i]===null?'暂无评分':values[i]+'/100'}</tspan></text>`}).join('');
-  // Missing/failed dimensions are omitted from the polygon instead of being
-  // rendered as a misleading zero. Consecutive observed points are connected.
-  const paths=[];let run=[];
+  // Axes form a cycle: connect every valid adjacent pair, including last -> first.
+  // Missing dimensions remain gaps rather than invented zero scores.
+  const paths=[];
   const point=(v,i)=>{const a=-Math.PI/2+i*angle,rr=rad*v/maxCount;return `${c+rr*Math.cos(a)},${c+rr*Math.sin(a)}`;};
-  [...values, null].forEach((v,i)=>{if(i<n&&v!==null)run.push(point(v,i));else{if(run.length>1)paths.push(`<polyline points="${run.join(' ')}" class="radar-data"/>`);run=[];}});
-  if(values.every(v=>v!==null))paths.splice(0,paths.length,`<polygon points="${poly(values)}" class="radar-data"/>`);
+  if(values.every(v=>v!==null))paths.push(`<polygon points="${poly(values)}" class="radar-data"/>`);
+  else values.forEach((v,i)=>{
+    const next=(i+1)%n;
+    if(v!==null&&values[next]!==null)paths.push(`<polyline points="${point(v,i)} ${point(values[next],next)}" class="radar-data" data-from="${esc(ids[i])}" data-to="${esc(ids[next])}"/>`);
+  });
   const dots=values.map((v,i)=>v===null?'':`<circle cx="${point(v,i).split(',')[0]}" cy="${point(v,i).split(',')[1]}" r="5" class="radar-dot" data-dimension="${esc(ids[i])}" data-score="${v}"><title>${names[i]}：${v}/100</title></circle>`).join('');
   $('radar').innerHTML=`<section class="radar-card"><div><div class="label">AI 可信度画像</div><h3>${n===5?'五个调查方向':'历史八维画像'}</h3><p class="muted">雷达图直接展示 AI 对各方向所选证据的内容可信度评分，与下方评分卡片一致；不是公司实力或好坏评级。去重线索数量仅作辅助信息，不参与分数换算。</p><p class="muted">固定量表：0–100 分，每圈 20 分。无有效评分或引用待核的方向留空，不按 0 分绘制。</p></div><svg class="radar" viewBox="-100 -40 520 400" role="img" aria-label="${n===5?'五个调查方向':'历史八维画像'}AI 内容可信度评分雷达图">${rings}${axes}${paths.join('')}${dots}${labels}</svg><div class="radar-legend">${names.map((n,i)=>`<span class="radar-state ${states[i].className}"><i></i>${n} · ${scoreLabels[i]} · ${states[i].label} · ${focused.has(ids[i])?'重点追查':'基础检索'}</span>`).join('')}</div></section>`;
 }

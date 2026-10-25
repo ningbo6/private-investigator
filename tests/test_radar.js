@@ -39,3 +39,20 @@ console.log('Radar mapping, missing values, invalid citations, zero and historic
 
 report.dimensions = report.dimensions.slice(0, 2);
 assert.equal((draw(report).match(/class="radar-label"/g)||[]).length, 5, 'all five axes remain visible even with incomplete dimension metadata');
+
+// Check every missing-score combination, including the circular last/first edge.
+for(let mask=0;mask<32;mask++) {
+  report.credibility={assessments:ids.map((id,i)=>({task_id:id,status:'assessed',score:mask&(1<<i)?50+i:null}))};
+  const output=draw(report);
+  if(mask===31){
+    assert.match(output, /<polygon[^>]+class="radar-data"/);
+    continue;
+  }
+  for(let i=0;i<5;i++) {
+    const next=(i+1)%5;
+    const expected=Boolean((mask&(1<<i))&&(mask&(1<<next)));
+    assert.equal(output.includes(`data-from="${ids[i]}" data-to="${ids[next]}"`),expected,`mask ${mask}, edge ${i}->${next}`);
+  }
+  assert.doesNotMatch(output, /<polygon[^>]+class="radar-data"/);
+}
+console.log('All 32 circular radar connectivity combinations passed');
